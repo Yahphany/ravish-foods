@@ -5,30 +5,40 @@ import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
   const navigate = useNavigate();
+
+  // Form field states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState("");
+  const [role, setRole] = useState("buyer"); // 'buyer' (default), 'vendor', 'logistics'
 
+  // UI feedback states
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // boolean, not string
+
+  // Pull signInUser and session from the global auth context
   const { session, signInUser } = UserAuth();
-  console.log(session);
-  console.log(email, password);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError(""); // Clear previous errors before each attempt
+
     try {
-      const result = await signInUser(email, password);
+      // Call Supabase signInWithPassword through our auth context wrapper with the expected role
+      const result = await signInUser(email, password, role);
+
       if (result && result.success) {
+        // Login successful — navigate to the user's dashboard
         navigate("/dashboard");
       } else {
+        // Surface the exact Supabase or role-checking error message to the user
         setError(result?.error?.message || "Invalid login credentials.");
-        console.log(error)
       }
     } catch (err) {
-      setError('an error occurred during sign-in. Please try again.');
+      // Catch unexpected runtime errors (network failures, etc.)
+      setError("An error occurred during sign-in. Please try again.");
     } finally {
+      // Always reset the loading state when the request completes
       setLoading(false);
     }
   };
@@ -120,6 +130,28 @@ export default function Login() {
         </p>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-5 text-left">
+          
+          {/* Account Role Selector Tabs */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-gray-800">Login As</label>
+            <div className="grid grid-cols-3 gap-2 bg-gray-100 p-1 rounded-xl">
+              {["buyer", "vendor", "logistics"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
+                    role === r
+                      ? "bg-[#F24E05] text-white shadow-sm"
+                      : "text-gray-500 hover:text-gray-900 bg-transparent"
+                  }`}
+                >
+                  {r === "logistics" ? "Logistics" : r}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2">
             <label
               htmlFor="email"

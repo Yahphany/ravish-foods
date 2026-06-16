@@ -27,7 +27,7 @@ export default function Menu() {
   };
 
   const sortedMenu = useMemo(
-    () => [...menuItems].sort((a, b) => a.id - b.id),
+    () => [...menuItems].sort((a, b) => String(a.id).localeCompare(String(b.id))),
     [menuItems]
   );
 

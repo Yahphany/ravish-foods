@@ -7,15 +7,20 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState("buyer"); // 'buyer' (default), 'vendor', 'logistics'
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  // Track whether the registration is complete but pending email verification
+  const [isRegistered, setIsRegistered] = useState(false);
 
   const { signUpNewUser } = UserAuth();
 
   const handleSignUp = async (e) => {
     e.preventDefault();
     
+    // Client-side confirmation check
     if (password !== confirmPassword) {
       return setError("Passwords do not match.");
     }
@@ -25,13 +30,24 @@ export default function Signup() {
     setSuccess("");
 
     try {
-      const result = await signUpNewUser(email, password);
+      // Trigger Supabase sign up with role and display name
+      const result = await signUpNewUser(email, password, role, displayName);
+      
       if (result.success) {
-        setSuccess("Registration successful! Redirecting to dashboard...");
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 2000);
+        // If email confirmation is DISABLED in Supabase provider dashboard, 
+        // Supabase returns a session immediately upon sign up.
+        if (result.data?.session) {
+          setSuccess("Registration successful! Redirecting to dashboard...");
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 2000);
+        } else {
+          // If email confirmation is ENABLED (Supabase default), no session is returned yet.
+          // The user must verify their email before accessing authenticated routes.
+          setIsRegistered(true);
+        }
       } else {
+        // Handle database or credential constraints returned by Supabase auth
         setError(result.error?.message || "An error occurred during sign-up. Please try again.");
       }
     } catch (err) {
@@ -40,6 +56,45 @@ export default function Signup() {
       setLoading(false);
     }
   };
+
+  // If successfully registered but requires email confirmation, show instructions
+  if (isRegistered) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDF5ED] font-sans p-4">
+        <div className="w-full max-w-[440px] bg-white rounded-[20px] p-10 shadow-[0_10px_30px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)] border border-black/[0.05] text-center space-y-6 animate-scale-up">
+          <div className="flex justify-center">
+            <div className="w-[68px] h-[68px] bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-sm">
+              {/* SVG Mail bounce icon for high quality UX */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 animate-bounce">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5H4.5a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-[26px] font-semibold text-gray-800 tracking-tight">Verify Your Email</h1>
+            <p className="text-sm text-gray-500">
+              We have sent a verification link to your email: <br />
+              <strong className="text-gray-700 break-all">{email}</strong>
+            </p>
+          </div>
+
+          <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-left">
+            <p className="text-xs text-orange-800 leading-relaxed font-medium">
+              💡 <strong>Note:</strong> You must click the confirmation link in the email to activate your account before you can log in. Remember to check your Spam folder if you can't find it.
+            </p>
+          </div>
+
+          <Link
+            to="/login"
+            className="w-full bg-[#F24E05] hover:bg-[#D94100] text-white rounded-[10px] py-3.5 text-base font-semibold transition-all duration-200 shadow-sm block text-center cursor-pointer"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FDF5ED] font-sans p-4">
@@ -84,6 +139,43 @@ export default function Signup() {
         )}
 
         <form onSubmit={handleSignUp} className="flex flex-col gap-5 text-left">
+          
+          {/* Display Name / Shop Name Input */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="displayName" className="text-sm font-semibold text-gray-800">
+              {role === "vendor" ? "Vendor / Restaurant Name" : "Display Name"}
+            </label>
+            <input
+              type="text"
+              id="displayName"
+              placeholder={role === "vendor" ? "e.g. Iya Basira Kitchen" : "e.g. John Doe"}
+              className="w-full bg-gray-100 border border-transparent rounded-[10px] px-4 py-3.5 text-[15px] text-gray-800 placeholder-gray-400 focus:bg-white focus:border-[#F24E05] focus:ring-4 focus:ring-[#F24E05]/10 outline-none transition-all duration-200"
+              required
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+
+          {/* Account Role Selector Tabs */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-gray-800">Register As</label>
+            <div className="grid grid-cols-3 gap-2 bg-gray-100 p-1 rounded-xl">
+              {["buyer", "vendor", "logistics"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
+                    role === r
+                      ? "bg-[#F24E05] text-white shadow-sm"
+                      : "text-gray-500 hover:text-gray-900 bg-transparent"
+                  }`}
+                >
+                  {r === "logistics" ? "Logistics" : r}
+                </button>
+              ))}
+            </div>
+          </div>
           
           <div className="flex flex-col gap-2">
             <label htmlFor="email" className="text-sm font-semibold text-gray-800">Email Address</label>
