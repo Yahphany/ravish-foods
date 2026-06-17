@@ -6,11 +6,11 @@ import { ArrowRight, Clock, Shield, Truck } from "lucide-react";
 export default function Landing() {
   return (
     <Layout>
-      <div className="min-h-screen w-full pt-20 pb-10 px-10 md:px-20 flex flex-col-reverse justify-end md:justify-center md:flex-row gap-10">
+      <div className="min-h-screen w-full pt-20 px-10 md:px-20 flex flex-col-reverse justify-end md:justify-center md:flex-row gap-10">
         {/* Text Content */}
         <div className="w-full md:w-[50%] flex flex-col justify-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-5">
-            Delicious food delivered to your door
+            Delicious food delivered <span className="text-red-500">to</span> <br className="md:hidden" />your door
           </h1>
           <p className="text-xl mb-5">
             Order from the best restaurants in your area. Fresh, fast, and
@@ -38,7 +38,7 @@ export default function Landing() {
 
       <section className="py-10 md:py-20 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-xl md:text-3xl font-bold text-center mb-12">
+          <h2 className="text-xl md:text-3xl font-bold text-center">
             Why Choose FoodHub?
           </h2>
           <div className="grid md:grid-cols-3 gap-8">

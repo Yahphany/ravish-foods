@@ -101,7 +101,7 @@ export default function Header() {
         <Link to="/cart" className="relative p-1 text-gray-600 hover:text-[#F24E05] transition-colors">
           <ShoppingCart size={20} />
           {cartCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-[#F24E05] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ">
               {cartCount}
             </span>
           )}
