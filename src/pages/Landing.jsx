@@ -6,7 +6,7 @@ import { ArrowRight, Clock, Shield, Truck } from "lucide-react";
 export default function Landing() {
   return (
     <Layout>
-      <div className="h-screen w-full px-20 flex flex-col-reverse md:flex-row gap-10">
+      <div className="h-screen w-full px-10 md:px-20 flex flex-col-reverse md:flex-row gap-10">
         {/* Text Content */}
         <div className="w-full md:w-[50%] flex flex-col justify-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-5">
