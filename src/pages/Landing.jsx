@@ -6,7 +6,7 @@ import { ArrowRight, Clock, Shield, Truck } from "lucide-react";
 export default function Landing() {
   return (
     <Layout>
-      <div className="h-screen w-full px-10 md:px-20 flex flex-col-reverse md:flex-row gap-10">
+      <div className="min-h-screen w-full pt-20 pb-10 px-10 md:px-20 flex flex-col-reverse justify-end md:justify-center md:flex-row gap-10">
         {/* Text Content */}
         <div className="w-full md:w-[50%] flex flex-col justify-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-5">
@@ -17,7 +17,9 @@ export default function Landing() {
             always delicious.
           </p>
           <div className="flex gap-3">
-            <Link className="bg-orange-400 text-white p-2 rounded-lg">Order now</Link>
+            <Link className="bg-orange-400 text-white p-2 rounded-lg">
+              Order now
+            </Link>
             <Link className="bg-orange-400 text-white p-2 rounded-lg flex w-30 items-center">
               View menu <ArrowRight />
             </Link>
@@ -27,7 +29,7 @@ export default function Landing() {
         {/* Image Content */}
         <div className="w-full md:w-[50%] flex items-center">
           <img
-            className="rounded-lg"
+            className="rounded-lg w-full h-auto object-cover"
             src="https://images.unsplash.com/photo-1644946763226-22c60fcb6635?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmb29kJTIwZGVsaXZlcnklMjByZXN0YXVyYW50fGVufDF8fHx8MTc3MzY2NzI5N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
             alt="food"
           />
@@ -36,7 +38,7 @@ export default function Landing() {
 
       <section className="py-10 md:py-20 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-xl md:text-3xl font-bold text-center mb-12">
             Why Choose FoodHub?
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
@@ -69,10 +71,12 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-10 md:py-20 px-20 bg-gray-50">
+      <section className="py-10 px-10 md:px-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Popular Dishes</h2>
+            <h2 className="text-xl md:text-3xl font-bold mb-4">
+              Popular Dishes
+            </h2>
             <p className="text-gray-600">Check out our most loved items</p>
           </div>
           <div className="grid md:grid-cols-4 gap-6 mb-8">
