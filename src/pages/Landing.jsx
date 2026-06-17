@@ -16,7 +16,7 @@ export default function Landing() {
             Order from the best restaurants in your area. Fresh, fast, and
             always delicious.
           </p>
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-5">
             <Link className="bg-orange-400 text-white p-2 rounded-lg">
               Order now
             </Link>
