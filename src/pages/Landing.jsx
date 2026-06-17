@@ -6,9 +6,10 @@ import { ArrowRight, Clock, Shield, Truck } from "lucide-react";
 export default function Landing() {
   return (
     <Layout>
-      <div className="h-screen w-full px-20 flex gap-10">
-        <div className="w-[50%] pt-20 flex flex-col justify-center">
-          <h1 className="text-5xl font-bold mb-5">
+      <div className="h-screen w-full px-20 flex flex-col-reverse md:flex-row gap-10">
+        {/* Text Content */}
+        <div className="w-full md:w-[50%] flex flex-col justify-center">
+          <h1 className="text-3xl md:text-5xl font-bold mb-5">
             Delicious food delivered to your door
           </h1>
           <p className="text-xl mb-5">
@@ -16,14 +17,15 @@ export default function Landing() {
             always delicious.
           </p>
           <div className="flex gap-3">
-            <Link className="bg-orange-400 p-2 rounded-lg">Order now</Link>
-            <Link className="bg-orange-400 p-2 rounded-lg flex w-30 items-center">
+            <Link className="bg-orange-400 text-white p-2 rounded-lg">Order now</Link>
+            <Link className="bg-orange-400 text-white p-2 rounded-lg flex w-30 items-center">
               View menu <ArrowRight />
             </Link>
           </div>
         </div>
 
-        <div className="w-[50%] pt-20 flex items-center">
+        {/* Image Content */}
+        <div className="w-full md:w-[50%] flex items-center">
           <img
             className="rounded-lg"
             src="https://images.unsplash.com/photo-1644946763226-22c60fcb6635?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmb29kJTIwZGVsaXZlcnklMjByZXN0YXVyYW50fGVufDF8fHx8MTc3MzY2NzI5N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
@@ -113,8 +115,11 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="text-center">
-            <Link to="/menu" className="bg-orange-600 hover:bg-orange-700 flex w-35 p-1 rounded-lg text-white">
+          <div className="flex justify-center">
+            <Link
+              to="/menu"
+              className="bg-orange-600 hover:bg-orange-700 flex w-35 p-2 rounded-lg text-white text-sm"
+            >
               View Full Menu
               <ArrowRight />
             </Link>
