@@ -10,7 +10,9 @@ export default function Landing() {
         {/* Text Content */}
         <div className="w-full md:w-[50%] flex flex-col justify-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-5">
-            Delicious food delivered <span className="text-red-500">to</span> <br className="md:hidden" />your door
+            Delicious food delivered <span className="text-red-500">to</span>{" "}
+            <br className="md:hidden" />
+            your door
           </h1>
           <p className="text-xl mb-5">
             Order from the best restaurants in your area. Fresh, fast, and

@@ -19,6 +19,49 @@ export const CartProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   // Controls the loading spinner on dashboards while orders are being fetched
   const [ordersLoading, setOrdersLoading] = useState(false);
+  // Admin vendor ID fetched from public profiles
+  const [adminVendorId, setAdminVendorId] = useState(null);
+  // Toast notifications for realtime order updates
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 6000);
+  };
+
+  useEffect(() => {
+    const fetchAdminId = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", "ebenezeryahphany17@gmail.com")
+          .single();
+
+        if (error || !data) {
+          console.warn(
+            "Could not find admin vendor profile, attempting fallback to first vendor profile.",
+          );
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("role", "vendor")
+            .limit(1);
+
+          if (!fallbackError && fallbackData && fallbackData.length > 0) {
+            setAdminVendorId(fallbackData[0].id);
+          }
+        } else {
+          setAdminVendorId(data.id);
+        }
+      } catch (err) {
+        console.error("Exception fetching admin vendor ID:", err);
+      }
+    };
+    fetchAdminId();
+  }, []);
 
   // fetchOrders: queries the Supabase 'orders' table. The query filters change
   // depending on whether the user is a Buyer, Vendor, or Logistics dispatcher.
@@ -30,45 +73,80 @@ export const CartProvider = ({ children }) => {
     }
     setOrdersLoading(true);
     try {
-      // Setup the base query selecting order information joined with customer profiles and order items
-      let query = supabase
-        .from("orders")
-        .select(`
+      // The select fields shared across all role queries
+      const selectFields = `
+        id,
+        status,
+        total,
+        delivery_fee,
+        delivery_address,
+        created_at,
+        user_id,
+        vendor_id,
+        dispatcher_id,
+        order_items (
           id,
-          status,
-          total,
-          delivery_fee,
-          delivery_address,
-          created_at,
-          user_id,
-          vendor_id,
-          dispatcher_id,
-          profiles:user_id (
-            display_name,
-            email,
-            phone
-          ),
-          order_items (
-            id,
-            menu_item_id,
-            name,
-            price,
-            quantity,
-            image
-          )
-        `);
+          menu_item_id,
+          name,
+          price,
+          quantity,
+          image
+        )
+      `;
 
-      // Enforce role-based data partitioning:
+      // Role-based query execution
+      let data = null;
+      let error = null;
+
       if (userRole === "buyer") {
         // Buyers can only see their own orders
-        query = query.eq("user_id", session.user.id);
+        const result = await supabase
+          .from("orders")
+          .select(selectFields)
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false });
+        data = result.data;
+        error = result.error;
       } else if (userRole === "vendor") {
         // Vendors can only see orders placed for their menu items
-        query = query.eq("vendor_id", session.user.id);
+        const result = await supabase
+          .from("orders")
+          .select(selectFields)
+          .eq("vendor_id", session.user.id)
+          .order("created_at", { ascending: false });
+        data = result.data;
+        error = result.error;
       } else if (userRole === "logistics") {
-        // Logistics dispatchers can see unclaimed orders ready for delivery,
-        // or any orders they have already claimed for delivery
-        query = query.or(`dispatcher_id.eq.${session.user.id},and(status.eq.Ready for Delivery,dispatcher_id.is.null)`);
+        // Use two separate queries to avoid PostgREST breaking on the space
+        // in "Ready for Delivery" when using the .or() filter syntax.
+        const [
+          { data: myOrders, error: err1 },
+          { data: readyOrders, error: err2 },
+        ] = await Promise.all([
+          supabase
+            .from("orders")
+            .select(selectFields)
+            .eq("dispatcher_id", session.user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("orders")
+            .select(selectFields)
+            .eq("status", "Ready for Delivery")
+            .is("dispatcher_id", null)
+            .order("created_at", { ascending: false }),
+        ]);
+        error = err1 || err2;
+        if (!error) {
+          // Merge and deduplicate by ID, then re-sort by date descending
+          const seen = new Set();
+          data = [...(myOrders || []), ...(readyOrders || [])]
+            .filter((o) => {
+              if (seen.has(o.id)) return false;
+              seen.add(o.id);
+              return true;
+            })
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
       } else {
         // Fallback for safety during loading / role-resolving
         setOrders([]);
@@ -76,35 +154,59 @@ export const CartProvider = ({ children }) => {
         return;
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false });
-
       if (error) {
         console.error("Error fetching orders:", error);
       } else if (data) {
+        // Fetch profiles separately to bypass the missing schema foreign keys
+        const userIds = [
+          ...new Set(data.map((order) => order.user_id).filter(Boolean)),
+        ];
+        const profilesMap = {};
+
+        if (userIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, display_name, email, phone")
+            .in("id", userIds);
+
+          if (profilesError) {
+            console.error("Error fetching customer profiles:", profilesError);
+          } else if (profilesData) {
+            profilesData.forEach((profile) => {
+              profilesMap[profile.id] = profile;
+            });
+          }
+        }
+
         // Normalise the nested Supabase responses into the structure expected by dashboards
-        const formatted = data.map((order) => ({
-          id: order.id,
-          date: order.created_at,
-          items: (order.order_items || []).map((item) => ({
-            id: item.menu_item_id,
-            name: item.name,
-            price: parseFloat(item.price),
-            quantity: item.quantity,
-            image: item.image,
-          })),
-          total: parseFloat(order.total),
-          status: order.status,
-          deliveryAddress: order.delivery_address,
-          deliveryFee: parseFloat(order.delivery_fee),
-          userId: order.user_id,
-          vendorId: order.vendor_id,
-          dispatcherId: order.dispatcher_id,
-          customer: order.profiles ? {
-            displayName: order.profiles.display_name,
-            email: order.profiles.email,
-            phone: order.profiles.phone
-          } : null
-        }));
+        const formatted = data.map((order) => {
+          const profile = profilesMap[order.user_id];
+          return {
+            id: order.id,
+            date: order.created_at,
+            items: (order.order_items || []).map((item) => ({
+              id: item.menu_item_id,
+              name: item.name,
+              price: parseFloat(item.price),
+              quantity: item.quantity,
+              image: item.image,
+            })),
+            total: parseFloat(order.total),
+            status: order.status,
+            deliveryAddress: order.delivery_address,
+            deliveryFee: parseFloat(order.delivery_fee),
+            userId: order.user_id,
+            vendorId: order.vendor_id,
+            dispatcherId: order.dispatcher_id,
+            customer: profile
+              ? {
+                  displayName: profile.display_name,
+                  email: profile.email,
+                  phone: profile.phone,
+                }
+              : null,
+          };
+        });
         setOrders(formatted);
       }
     } catch (err) {
@@ -124,6 +226,51 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem("ravish_cart", JSON.stringify(cart));
   }, [cart]);
 
+  // Real-time Supabase subscriptions for notifications
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = supabase
+      .channel("orders_realtime_notifications")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        (payload) => {
+          // 1. If admin vendor or the order's vendor, notify on new order insertion
+          const isAdminVendor =
+            session.user.email === "ebenezeryahphany17@gmail.com";
+          const isTargetVendor = payload.new.vendor_id === session.user.id;
+          if (
+            payload.eventType === "INSERT" &&
+            (isAdminVendor || isTargetVendor)
+          ) {
+            showToast(
+              `New platform order received! ID: ORD-${payload.new.id.slice(0, 8).toUpperCase()}`,
+            );
+            fetchOrders();
+          }
+
+          // 2. If logistics dispatcher, notify when order becomes Ready for Delivery
+          if (
+            userRole === "logistics" &&
+            payload.eventType === "UPDATE" &&
+            payload.new.status === "Ready for Delivery" &&
+            !payload.new.dispatcher_id
+          ) {
+            showToast(
+              `New shipment job ready! ID: ORD-${payload.new.id.slice(0, 8).toUpperCase()}`,
+            );
+            fetchOrders();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, userRole]);
+
   // addToCart: Adds an item to the shopping cart.
   // If the item already exists in the cart, increment its quantity by 1.
   // Otherwise, add the item as a new entry with an initial quantity of 1.
@@ -134,7 +281,7 @@ export const CartProvider = ({ children }) => {
         return prevCart.map((cartItem) =>
           cartItem.id === item.id
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
+            : cartItem,
         );
       }
       return [...prevCart, { ...item, quantity: 1 }];
@@ -151,8 +298,10 @@ export const CartProvider = ({ children }) => {
   const updateQuantity = (itemId, quantity) => {
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === itemId ? { ...item, quantity: Math.max(1, quantity) } : item
-      )
+        item.id === itemId
+          ? { ...item, quantity: Math.max(1, quantity) }
+          : item,
+      ),
     );
   };
 
@@ -166,10 +315,23 @@ export const CartProvider = ({ children }) => {
   const placeOrder = async (deliveryAddress = "Default Address") => {
     if (cart.length === 0 || !session?.user?.id) return null;
     try {
+      // Fetch admin vendor ID dynamically if not cached in state
+      let activeAdminVendorId = adminVendorId;
+      if (!activeAdminVendorId) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", "ebenezeryahphany17@gmail.com")
+          .single();
+        if (data?.id) {
+          activeAdminVendorId = data.id;
+        }
+      }
+
       // Group items in the shopping cart by vendor_id
       const vendorGroups = {};
       cart.forEach((item) => {
-        const vendorId = item.vendor_id || "platform"; // Use a fallback key if vendor_id is not specified
+        const vendorId = item.vendor_id || activeAdminVendorId || "platform";
         if (!vendorGroups[vendorId]) {
           vendorGroups[vendorId] = [];
         }
@@ -180,8 +342,14 @@ export const CartProvider = ({ children }) => {
 
       // Process orders for each vendor grouping
       for (const [vendorKey, items] of Object.entries(vendorGroups)) {
-        const actualVendorId = vendorKey === "platform" ? null : vendorKey;
-        const groupTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const actualVendorId =
+          vendorKey === "platform" || vendorKey === activeAdminVendorId
+            ? activeAdminVendorId
+            : vendorKey;
+        const groupTotal = items.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0,
+        );
 
         // 1. Insert the order record for this group
         const { data: orderData, error: orderError } = await supabase
@@ -331,6 +499,28 @@ export const CartProvider = ({ children }) => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
+  // updateDispatcherLocation: Updates the coordinates of the courier in real-time
+  const updateDispatcherLocation = async (orderId, lat, lng) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          dispatcher_lat: lat,
+          dispatcher_lng: lng,
+        })
+        .eq("id", orderId);
+
+      if (error) {
+        console.error("Error updating dispatcher location:", error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("Exception updating dispatcher location:", err);
+      return false;
+    }
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -349,6 +539,8 @@ export const CartProvider = ({ children }) => {
         fetchOrders,
         updateOrderStatus,
         claimOrderForDelivery,
+        updateDispatcherLocation,
+        toastMessage,
       }}
     >
       {children}

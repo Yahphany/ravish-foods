@@ -1,49 +1,91 @@
 import React, { useContext, useState } from "react";
 import { UserAuth } from "../context/AuthContext";
 import { CartContext } from "../context/CartContext";
-import { 
-  Truck, 
-  MapPin, 
-  User, 
-  Phone, 
-  Mail, 
-  CheckCircle2, 
-  Package, 
-  List, 
+import {
+  Truck,
+  MapPin,
+  User,
+  Phone,
+  Mail,
+  CheckCircle2,
+  Package,
+  List,
   Navigation,
   DollarSign,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 export default function LogisticsDashboard() {
   const { session } = UserAuth();
-  const { orders, claimOrderForDelivery, updateOrderStatus, ordersLoading } = useContext(CartContext);
+  const {
+    orders,
+    claimOrderForDelivery,
+    updateOrderStatus,
+    updateDispatcherLocation,
+    ordersLoading,
+  } = useContext(CartContext);
 
   const [activeTab, setActiveTab] = useState("available"); // "available", "active", "completed"
+
+  // Filter orders by delivery dispatcher status
+  // 1. Available to claim: ready to ship out and has no driver assigned
+  const availableOrders = orders.filter(
+    (order) => order.status === "Ready for Delivery" && !order.dispatcherId,
+  );
+
+  // 2. Active claim: out for delivery and assigned to this user
+  const myActiveOrders = orders.filter(
+    (order) =>
+      order.status === "Out for Delivery" &&
+      order.dispatcherId === session?.user?.id,
+  );
+
+  // Real-time location tracking for logistics users with active orders
+  React.useEffect(() => {
+    if (myActiveOrders.length === 0) return;
+
+    if ("geolocation" in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log("Broadcasting location update:", latitude, longitude);
+
+          for (const order of myActiveOrders) {
+            await updateDispatcherLocation(order.id, latitude, longitude);
+          }
+        },
+        (error) => {
+          console.error("Error watching geolocation position:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 10000,
+          timeout: 5000,
+        },
+      );
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+  }, [myActiveOrders, updateDispatcherLocation]);
 
   // Helper to slice and display order IDs cleanly
   const displayOrderId = (id) => {
     return id.startsWith("ORD-") ? id : `ORD-${id.slice(0, 8).toUpperCase()}`;
   };
 
-  // Filter orders by delivery dispatcher status
-  // 1. Available to claim: ready to ship out and has no driver assigned
-  const availableOrders = orders.filter(
-    (order) => order.status === "Ready for Delivery" && !order.dispatcherId
-  );
-
-  // 2. Active claim: out for delivery and assigned to this user
-  const myActiveOrders = orders.filter(
-    (order) => order.status === "Out for Delivery" && order.dispatcherId === session?.user?.id
-  );
-
   // 3. Completed: delivered by this dispatcher
   const myCompletedOrders = orders.filter(
-    (order) => order.status === "Completed" && order.dispatcherId === session?.user?.id
+    (order) =>
+      order.status === "Completed" && order.dispatcherId === session?.user?.id,
   );
 
   // Compute metrics
-  const totalEarnings = myCompletedOrders.reduce((sum, order) => sum + (order.deliveryFee || 500), 0);
+  const totalEarnings = myCompletedOrders.reduce(
+    (sum, order) => sum + (order.deliveryFee || 500),
+    0,
+  );
 
   // Handle claiming an order for delivery
   const handleClaimOrder = async (orderId) => {
@@ -69,7 +111,7 @@ export default function LogisticsDashboard() {
       month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   };
 
@@ -82,8 +124,12 @@ export default function LogisticsDashboard() {
             <Package size={24} />
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Available Deliveries</p>
-            <p className="mt-1 text-2xl font-black text-gray-900">{availableOrders.length}</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Available Deliveries
+            </p>
+            <p className="mt-1 text-2xl font-black text-gray-900">
+              {availableOrders.length}
+            </p>
           </div>
         </div>
 
@@ -92,8 +138,12 @@ export default function LogisticsDashboard() {
             <Truck size={24} />
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Deliveries</p>
-            <p className="mt-1 text-2xl font-black text-gray-900">{myActiveOrders.length}</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Active Deliveries
+            </p>
+            <p className="mt-1 text-2xl font-black text-gray-900">
+              {myActiveOrders.length}
+            </p>
           </div>
         </div>
 
@@ -102,8 +152,12 @@ export default function LogisticsDashboard() {
             <DollarSign size={24} />
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Delivery Revenue</p>
-            <p className="mt-1 text-2xl font-black text-gray-900">₦{totalEarnings.toFixed(2)}</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Delivery Revenue
+            </p>
+            <p className="mt-1 text-2xl font-black text-gray-900">
+              ₦{totalEarnings.toFixed(2)}
+            </p>
           </div>
         </div>
       </div>
@@ -159,45 +213,79 @@ export default function LogisticsDashboard() {
           <div className="space-y-6">
             <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
               <Truck className="text-[#F24E05]" size={22} />
-              <h2 className="text-2xl font-bold text-gray-900">Available Prepared Deliveries</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Available Prepared Deliveries
+              </h2>
             </div>
 
             {availableOrders.length === 0 ? (
               <div className="text-center py-12 flex flex-col items-center">
                 <AlertCircle className="text-gray-300 mb-3" size={48} />
-                <h3 className="text-lg font-bold text-gray-800">No shipments ready for dispatch</h3>
-                <p className="text-sm text-gray-500 mt-1">Check back later once vendors package and prepare customer orders.</p>
+                <h3 className="text-lg font-bold text-gray-800">
+                  No shipments ready for dispatch
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Check back later once vendors package and prepare customer
+                  orders.
+                </p>
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
                 {availableOrders.map((order) => (
-                  <div key={order.id} className="rounded-2xl border border-gray-100 p-6 bg-gray-50/50 hover:bg-gray-50 transition-all flex flex-col justify-between">
+                  <div
+                    key={order.id}
+                    className="rounded-2xl border border-gray-100 p-6 bg-gray-50/50 hover:bg-gray-50 transition-all flex flex-col justify-between"
+                  >
                     <div className="space-y-4">
                       {/* ID & Date */}
                       <div className="flex justify-between items-start border-b border-gray-100 pb-3">
                         <div>
-                          <h3 className="font-extrabold text-base text-gray-900">{displayOrderId(order.id)}</h3>
-                          <p className="text-xs text-gray-400 mt-0.5">{formatDate(order.date)}</p>
+                          <h3 className="font-extrabold text-base text-gray-900">
+                            {displayOrderId(order.id)}
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {formatDate(order.date)}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-gray-400">Delivery Payout</p>
-                          <p className="text-sm font-black text-[#F24E05]">₦{(order.deliveryFee || 500).toFixed(2)}</p>
+                          <p className="text-xs text-gray-400">
+                            Delivery Payout
+                          </p>
+                          <p className="text-sm font-black text-[#F24E05]">
+                            ₦{(order.deliveryFee || 500).toFixed(2)}
+                          </p>
                         </div>
                       </div>
 
                       {/* Delivery Address */}
                       <div className="flex items-start gap-2 text-xs text-gray-600">
-                        <MapPin size={14} className="text-gray-400 mt-0.5 shrink-0" />
+                        <MapPin
+                          size={14}
+                          className="text-gray-400 mt-0.5 shrink-0"
+                        />
                         <div>
-                          <p className="font-bold text-gray-800">Delivery Address</p>
-                          <p className="mt-0.5 leading-relaxed">{order.deliveryAddress}</p>
+                          <p className="font-bold text-gray-800">
+                            Delivery Address
+                          </p>
+                          <p className="mt-0.5 leading-relaxed">
+                            {order.deliveryAddress}
+                          </p>
                         </div>
                       </div>
 
                       {/* Items quantity */}
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-white p-3 rounded-xl border border-gray-100">
                         <Package size={14} className="text-gray-400" />
-                        <span>Contains <strong className="text-gray-800">{order.items.reduce((sum, i) => sum + i.quantity, 0)} food items</strong></span>
+                        <span>
+                          Contains{" "}
+                          <strong className="text-gray-800">
+                            {order.items.reduce(
+                              (sum, i) => sum + i.quantity,
+                              0,
+                            )}{" "}
+                            food items
+                          </strong>
+                        </span>
                       </div>
                     </div>
 
@@ -220,26 +308,40 @@ export default function LogisticsDashboard() {
           <div className="space-y-6">
             <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
               <Navigation className="text-[#F24E05]" size={22} />
-              <h2 className="text-2xl font-bold text-gray-900">Your Active Route</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Your Active Route
+              </h2>
             </div>
 
             {myActiveOrders.length === 0 ? (
               <div className="text-center py-12 flex flex-col items-center">
                 <AlertCircle className="text-gray-300 mb-3" size={48} />
-                <h3 className="text-lg font-bold text-gray-800">No active deliveries currently</h3>
-                <p className="text-sm text-gray-500 mt-1">Accept a delivery route from the "Available Jobs" tab to start earning.</p>
+                <h3 className="text-lg font-bold text-gray-800">
+                  No active deliveries currently
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Accept a delivery route from the "Available Jobs" tab to start
+                  earning.
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {myActiveOrders.map((order) => (
-                  <div key={order.id} className="rounded-2xl border border-gray-100 p-6 bg-gray-50/50">
+                  <div
+                    key={order.id}
+                    className="rounded-2xl border border-gray-100 p-6 bg-gray-50/50"
+                  >
                     <div className="grid gap-6 md:grid-cols-2">
                       {/* Left: Info details */}
                       <div className="space-y-4 text-left">
                         <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
                           <div>
-                            <h3 className="font-extrabold text-lg text-gray-900">{displayOrderId(order.id)}</h3>
-                            <p className="text-xs text-gray-400 mt-0.5">{formatDate(order.date)}</p>
+                            <h3 className="font-extrabold text-lg text-gray-900">
+                              {displayOrderId(order.id)}
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {formatDate(order.date)}
+                            </p>
                           </div>
                           <span className="bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider">
                             Out for Delivery
@@ -248,30 +350,54 @@ export default function LogisticsDashboard() {
 
                         {/* Customer Info Card */}
                         <div className="bg-white p-4 rounded-xl border border-gray-100 space-y-3">
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Recipient Contact</p>
-                          
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                            Recipient Contact
+                          </p>
+
                           <div className="flex items-center gap-3 text-xs">
-                            <User size={14} className="text-gray-400 shrink-0" />
-                            <span className="font-bold text-gray-800">{order.customer?.displayName || "Anonymous"}</span>
+                            <User
+                              size={14}
+                              className="text-gray-400 shrink-0"
+                            />
+                            <span className="font-bold text-gray-800">
+                              {order.customer?.displayName || "Anonymous"}
+                            </span>
                           </div>
 
                           <div className="flex items-center gap-3 text-xs">
-                            <Mail size={14} className="text-gray-400 shrink-0" />
-                            <span className="text-gray-500">{order.customer?.email}</span>
+                            <Mail
+                              size={14}
+                              className="text-gray-400 shrink-0"
+                            />
+                            <span className="text-gray-500">
+                              {order.customer?.email}
+                            </span>
                           </div>
 
                           <div className="flex items-center gap-3 text-xs">
-                            <Phone size={14} className="text-gray-400 shrink-0" />
-                            <span className="text-gray-800 font-semibold">{order.customer?.phone || "No phone provided"}</span>
+                            <Phone
+                              size={14}
+                              className="text-gray-400 shrink-0"
+                            />
+                            <span className="text-gray-800 font-semibold">
+                              {order.customer?.phone || "No phone provided"}
+                            </span>
                           </div>
                         </div>
 
                         {/* Destination Address */}
                         <div className="bg-white p-4 rounded-xl border border-gray-100 flex items-start gap-2.5 text-xs text-gray-600">
-                          <MapPin size={16} className="text-[#F24E05] mt-0.5 shrink-0" />
+                          <MapPin
+                            size={16}
+                            className="text-[#F24E05] mt-0.5 shrink-0"
+                          />
                           <div>
-                            <p className="font-bold text-gray-800">Destination Address</p>
-                            <p className="mt-1 leading-relaxed text-gray-700 font-medium">{order.deliveryAddress}</p>
+                            <p className="font-bold text-gray-800">
+                              Destination Address
+                            </p>
+                            <p className="mt-1 leading-relaxed text-gray-700 font-medium">
+                              {order.deliveryAddress}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -280,12 +406,21 @@ export default function LogisticsDashboard() {
                       <div className="flex flex-col justify-between space-y-4">
                         {/* Package Contents */}
                         <div className="bg-white p-4 rounded-xl border border-gray-100 flex-1">
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Package Contents</p>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                            Package Contents
+                          </p>
                           <div className="space-y-2">
                             {order.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-xs border-b border-gray-50 pb-2 last:border-0 last:pb-0">
-                                <span className="font-semibold text-gray-700">{item.name}</span>
-                                <span className="font-black text-gray-900 bg-gray-100 rounded px-2 py-0.5">x{item.quantity}</span>
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center text-xs border-b border-gray-50 pb-2 last:border-0 last:pb-0"
+                              >
+                                <span className="font-semibold text-gray-700">
+                                  {item.name}
+                                </span>
+                                <span className="font-black text-gray-900 bg-gray-100 rounded px-2 py-0.5">
+                                  x{item.quantity}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -313,27 +448,44 @@ export default function LogisticsDashboard() {
           <div className="space-y-6">
             <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
               <CheckCircle2 className="text-[#F24E05]" size={22} />
-              <h2 className="text-2xl font-bold text-gray-900">Your Delivery History</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Your Delivery History
+              </h2>
             </div>
 
             {myCompletedOrders.length === 0 ? (
               <div className="text-center py-12 flex flex-col items-center">
                 <AlertCircle className="text-gray-300 mb-3" size={48} />
-                <h3 className="text-lg font-bold text-gray-800">No completed jobs yet</h3>
-                <p className="text-sm text-gray-500 mt-1">Deliver accepted orders to compile your shipment history.</p>
+                <h3 className="text-lg font-bold text-gray-800">
+                  No completed jobs yet
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Deliver accepted orders to compile your shipment history.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {myCompletedOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/30">
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/30"
+                  >
                     <div className="text-left">
-                      <h4 className="font-bold text-sm text-gray-900">{displayOrderId(order.id)}</h4>
-                      <p className="text-xs text-gray-400 mt-0.5">Delivered: {formatDate(order.date)}</p>
-                      <p className="text-xs text-gray-500 truncate max-w-[250px] sm:max-w-none mt-1">📍 {order.deliveryAddress}</p>
+                      <h4 className="font-bold text-sm text-gray-900">
+                        {displayOrderId(order.id)}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Delivered: {formatDate(order.date)}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate max-w-[250px] sm:max-w-none mt-1">
+                        📍 {order.deliveryAddress}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-400">Earned</p>
-                      <p className="font-black text-sm text-green-600">+₦{(order.deliveryFee || 500).toFixed(2)}</p>
+                      <p className="font-black text-sm text-green-600">
+                        +₦{(order.deliveryFee || 500).toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 ))}

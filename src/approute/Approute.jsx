@@ -9,6 +9,7 @@ import Login from "../pages/Login";
 import Menu from "../pages/Menu";
 import Cart from "../pages/Cart";
 import Signup from "../pages/Signup";
+import Tracking from "../pages/Tracking";
 
 export default function Approute() {
   return (
@@ -23,6 +24,7 @@ export default function Approute() {
               <Route path="/menu" element={<Menu />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/tracking/:orderId" element={<Tracking />} />
             </Routes>
           </BrowserRouter>
         </CartProvider>

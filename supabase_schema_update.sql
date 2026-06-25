@@ -126,3 +126,10 @@ WITH CHECK (
     WHERE orders.id = order_items.order_id AND orders.user_id = auth.uid()
   )
 );
+
+-- ====================================================================
+-- 8. Real-time Location Tracking Columns for Logistics Dispatchers
+-- ====================================================================
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS dispatcher_lat NUMERIC;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS dispatcher_lng NUMERIC;
+

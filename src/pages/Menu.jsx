@@ -19,7 +19,7 @@ export default function Menu() {
     "Sides & Breakfast",
     "Beverages",
   ];
-  
+
   const [activeCategory, setActiveCategory] = useState("All");
 
   const handleCategoryClick = (category) => {
@@ -27,8 +27,9 @@ export default function Menu() {
   };
 
   const sortedMenu = useMemo(
-    () => [...menuItems].sort((a, b) => String(a.id).localeCompare(String(b.id))),
-    [menuItems]
+    () =>
+      [...menuItems].sort((a, b) => String(a.id).localeCompare(String(b.id))),
+    [menuItems],
   );
 
   const filteredItems = useMemo(
@@ -36,7 +37,7 @@ export default function Menu() {
       activeCategory === "All"
         ? sortedMenu
         : sortedMenu.filter((item) => item.category === activeCategory),
-    [activeCategory, sortedMenu]
+    [activeCategory, sortedMenu],
   );
 
   return (
@@ -44,10 +45,14 @@ export default function Menu() {
       <div className="py-24 min-h-screen px-4 sm:px-6 md:px-10 lg:px-20 bg-[#FDF5ED]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="font-bold text-4xl text-gray-900 tracking-tight">Our Menu</h1>
-            <p className="text-gray-600 mt-2 text-md">Choose from our delicious selection of authentic dishes</p>
+            <h1 className="font-bold text-4xl text-gray-900 tracking-tight">
+              Our Menu
+            </h1>
+            <p className="text-gray-600 mt-2 text-md">
+              Choose from our delicious selection of authentic dishes
+            </p>
           </div>
-          
+
           {/* Category Badges Filter Bar */}
           <div className="h-fit w-full bg-white shadow-sm border border-gray-100 flex flex-wrap justify-center gap-2 rounded-2xl md:rounded-full mb-10 p-2">
             {categories.map((category, index) => (

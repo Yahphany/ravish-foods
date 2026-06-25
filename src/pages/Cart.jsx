@@ -3,27 +3,22 @@ import Layout from "../component/Layout";
 import { CartContext } from "../context/CartContext";
 import { UserAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { 
-  Trash2, 
-  ShoppingBag, 
-  Minus, 
-  Plus, 
+import {
+  Trash2,
+  ShoppingBag,
+  Minus,
+  Plus,
   ArrowLeft,
   CreditCard,
   Truck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 export default function Cart() {
-  const { 
-    cart, 
-    updateQuantity, 
-    removeFromCart, 
-    getCartTotal, 
-    placeOrder 
-  } = useContext(CartContext);
-  
+  const { cart, updateQuantity, removeFromCart, getCartTotal, placeOrder } =
+    useContext(CartContext);
+
   const { session } = UserAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -31,6 +26,7 @@ export default function Cart() {
   const [successMsg, setSuccessMsg] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
 
   useEffect(() => {
     // Inject Paystack script dynamically
@@ -61,6 +57,11 @@ export default function Cart() {
       return;
     }
 
+    if (!deliveryAddress.trim()) {
+      setErrorMsg("Please enter your delivery address before checking out.");
+      return;
+    }
+
     setLoading(true);
     setErrorMsg("");
 
@@ -79,20 +80,24 @@ export default function Cart() {
 
     const handleSuccessfulPayment = async (response) => {
       try {
-        const order = await placeOrder("Default Address");
+        const order = await placeOrder(deliveryAddress.trim());
         if (order) {
           setSuccessMsg("Payment successful! Redirecting to dashboard...");
           setTimeout(() => {
             navigate("/dashboard");
           }, 2000);
         } else {
-          setErrorModalMessage("Payment was successful, but we failed to record your order. Please contact support.");
+          setErrorModalMessage(
+            "Payment was successful, but we failed to record your order. Please contact support.",
+          );
           setShowErrorModal(true);
           setLoading(false);
         }
       } catch (orderErr) {
         console.error("Error writing order after payment:", orderErr);
-        setErrorModalMessage("Payment succeeded, but an error occurred saving the order details.");
+        setErrorModalMessage(
+          "Payment succeeded, but an error occurred saving the order details.",
+        );
         setShowErrorModal(true);
         setLoading(false);
       }
@@ -110,7 +115,9 @@ export default function Cart() {
         },
         onClose: function () {
           // Payment window closed/cancelled
-          setErrorModalMessage("Payment wasn't successful. The transaction was cancelled.");
+          setErrorModalMessage(
+            "Payment wasn't successful. The transaction was cancelled.",
+          );
           setShowErrorModal(true);
           setLoading(false);
         },
@@ -128,15 +135,16 @@ export default function Cart() {
     <Layout>
       <div className="py-24 min-h-screen bg-[#FDF5ED] px-4 sm:px-6 md:px-10 lg:px-20 text-gray-800">
         <div className="max-w-5xl mx-auto">
-          
-          <button 
-            onClick={() => navigate("/menu")} 
+          <button
+            onClick={() => navigate("/menu")}
             className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-[#F24E05] transition-colors mb-6 cursor-pointer"
           >
             <ArrowLeft size={16} /> Continue Shopping
           </button>
 
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-8">Your Cart</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-8">
+            Your Cart
+          </h1>
 
           {errorMsg && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3 text-sm">
@@ -155,11 +163,14 @@ export default function Cart() {
           {cart.length === 0 ? (
             <div className="rounded-3xl bg-white p-12 text-center border border-black/[0.02] shadow-sm flex flex-col items-center">
               <ShoppingBag size={64} className="text-gray-300 mb-4" />
-              <h2 className="text-xl font-bold text-gray-800">Your cart is empty</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                Your cart is empty
+              </h2>
               <p className="text-sm text-gray-500 mt-2 mb-6 max-w-sm">
-                Looks like you haven't added anything to your cart yet. Explore our delicious menu items to get started!
+                Looks like you haven't added anything to your cart yet. Explore
+                our delicious menu items to get started!
               </p>
-              <button 
+              <button
                 onClick={() => navigate("/menu")}
                 className="bg-[#F24E05] hover:bg-[#D94100] text-white px-8 py-3 rounded-full font-bold text-sm transition cursor-pointer shadow-md shadow-orange-500/10"
               >
@@ -168,39 +179,50 @@ export default function Cart() {
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-3">
-              
               {/* Cart Items List */}
               <div className="lg:col-span-2 space-y-4">
                 {cart.map((item) => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className="rounded-3xl bg-white p-5 border border-black/[0.02] shadow-sm flex items-center gap-4 transition hover:shadow-md"
                   >
                     {item.image && (
-                      <img 
-                        src={item.image} 
-                        alt={item.name} 
-                        className="w-20 h-20 rounded-2xl object-cover border border-gray-100" 
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-20 h-20 rounded-2xl object-cover border border-gray-100"
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-extrabold text-gray-900 text-base truncate">{item.name}</h3>
-                      <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide font-semibold">{item.category}</p>
-                      <p className="text-sm font-black text-[#F24E05] mt-2">₦{item.price.toFixed(2)}</p>
+                      <h3 className="font-extrabold text-gray-900 text-base truncate">
+                        {item.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide font-semibold">
+                        {item.category}
+                      </p>
+                      <p className="text-sm font-black text-[#F24E05] mt-2">
+                        ₦{item.price.toFixed(2)}
+                      </p>
                     </div>
 
                     {/* Quantity Controls */}
                     <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-full p-1.5">
-                      <button 
-                        onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
+                      <button
+                        onClick={() =>
+                          handleQuantityChange(item.id, item.quantity, -1)
+                        }
                         disabled={item.quantity <= 1}
                         className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-gray-600 hover:text-orange-500 hover:shadow-sm disabled:opacity-40 transition cursor-pointer border border-gray-100"
                       >
                         <Minus size={14} />
                       </button>
-                      <span className="text-sm font-bold text-gray-800 w-4 text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
+                      <span className="text-sm font-bold text-gray-800 w-4 text-center">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() =>
+                          handleQuantityChange(item.id, item.quantity, 1)
+                        }
                         className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-gray-600 hover:text-orange-500 hover:shadow-sm transition cursor-pointer border border-gray-100"
                       >
                         <Plus size={14} />
@@ -208,7 +230,7 @@ export default function Cart() {
                     </div>
 
                     {/* Delete Item */}
-                    <button 
+                    <button
                       onClick={() => removeFromCart(item.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition cursor-pointer"
                       title="Remove Item"
@@ -222,25 +244,53 @@ export default function Cart() {
               {/* Order Summary */}
               <div className="lg:col-span-1">
                 <div className="rounded-3xl bg-white p-6 border border-black/[0.02] shadow-sm space-y-6">
-                  <h3 className="text-lg font-extrabold border-b border-gray-100 pb-3 text-gray-900">Order Summary</h3>
-                  
+                  <h3 className="text-lg font-extrabold border-b border-gray-100 pb-3 text-gray-900">
+                    Order Summary
+                  </h3>
+
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between text-gray-600 font-medium">
                       <span>Subtotal</span>
-                      <span className="font-bold text-gray-800">₦{subtotal.toFixed(2)}</span>
+                      <span className="font-bold text-gray-800">
+                        ₦{subtotal.toFixed(2)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-gray-600 font-medium">
-                      <span className="flex items-center gap-1.5"><Truck size={16} /> Delivery Fee</span>
-                      <span className="font-bold text-gray-800">₦{deliveryFee.toFixed(2)}</span>
+                      <span className="flex items-center gap-1.5">
+                        <Truck size={16} /> Delivery Fee
+                      </span>
+                      <span className="font-bold text-gray-800">
+                        ₦{deliveryFee.toFixed(2)}
+                      </span>
                     </div>
-                    
+
+                    {/* Delivery Address Input */}
+                    <div className="border-t border-dashed border-gray-200 pt-4">
+                      <label
+                        htmlFor="deliveryAddress"
+                        className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+                      >
+                        📍 Delivery Address
+                      </label>
+                      <textarea
+                        id="deliveryAddress"
+                        rows={3}
+                        placeholder="Enter your full delivery address (street, city, landmark)..."
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:border-[#F24E05] focus:ring-4 focus:ring-[#F24E05]/10 outline-none transition-all duration-200 resize-none"
+                      />
+                    </div>
+
                     <div className="border-t border-dashed border-gray-200 pt-4 flex justify-between text-base font-extrabold text-gray-900">
                       <span>Total Amount</span>
-                      <span className="text-lg text-[#F24E05] font-black">₦{total.toFixed(2)}</span>
+                      <span className="text-lg text-[#F24E05] font-black">
+                        ₦{total.toFixed(2)}
+                      </span>
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleCheckout}
                     disabled={loading}
                     className="w-full bg-[#F24E05] hover:bg-[#D94100] active:scale-[0.98] text-white rounded-full py-4 text-sm font-bold transition-all shadow-md shadow-orange-500/10 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
@@ -255,10 +305,8 @@ export default function Cart() {
                   </button>
                 </div>
               </div>
-
             </div>
           )}
-
         </div>
       </div>
 
@@ -270,7 +318,9 @@ export default function Cart() {
               <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-500">
                 <AlertCircle size={36} />
               </div>
-              <h3 className="text-xl font-extrabold text-gray-900">Payment Failed</h3>
+              <h3 className="text-xl font-extrabold text-gray-900">
+                Payment Failed
+              </h3>
               <p className="text-sm text-gray-500 leading-relaxed">
                 {errorModalMessage}
               </p>

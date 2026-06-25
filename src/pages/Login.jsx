@@ -130,10 +130,11 @@ export default function Login() {
         </p>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-5 text-left">
-          
           {/* Account Role Selector Tabs */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-800">Login As</label>
+            <label className="text-sm font-semibold text-gray-800">
+              Login As
+            </label>
             <div className="grid grid-cols-3 gap-2 bg-gray-100 p-1 rounded-xl">
               {["buyer", "vendor", "logistics"].map((r) => (
                 <button
@@ -156,7 +157,6 @@ export default function Login() {
             <label
               htmlFor="email"
               className="text-sm font-semibold text-gray-800"
-              
             >
               Email
             </label>

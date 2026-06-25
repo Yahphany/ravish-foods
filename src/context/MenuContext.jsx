@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect } from "react";
-import nigerianFoods from "../component/data/african_menu";
 import { supabase } from "./supabaseClient";
 
 export const MenuContext = createContext();
@@ -11,10 +10,8 @@ export const MenuProvider = ({ children }) => {
   // Fetch all vendor-added menu items from the Supabase database
   const fetchMenuItems = async () => {
     try {
-      const { data, error } = await supabase
-        .from("menu_items")
-        .select("*");
-      
+      const { data, error } = await supabase.from("menu_items").select("*");
+
       if (error) {
         console.error("Error fetching database menu items:", error);
       } else if (data) {
@@ -43,7 +40,7 @@ export const MenuProvider = ({ children }) => {
           image: item.image || "",
           category: item.category,
           description: item.description || "",
-          vendor_id: item.vendor_id
+          vendor_id: item.vendor_id,
         })
         .select()
         .single();
@@ -84,21 +81,18 @@ export const MenuProvider = ({ children }) => {
     }
   };
 
-  // Combine default/hardcoded dishes with the database items that are marked as available
-  const menuItems = [
-    ...nigerianFoods,
-    ...dbMenuItems.filter((item) => item.is_available !== false)
-  ];
+  // Only display database items listed by vendor accounts that are marked as available
+  const menuItems = dbMenuItems.filter((item) => item.is_available !== false);
 
   return (
-    <MenuContext.Provider 
-      value={{ 
-        menuItems, 
-        dbMenuItems, 
-        loading, 
-        addMenuItem, 
+    <MenuContext.Provider
+      value={{
+        menuItems,
+        dbMenuItems,
+        loading,
+        addMenuItem,
         fetchMenuItems,
-        toggleMenuItemAvailability
+        toggleMenuItemAvailability,
       }}
     >
       {children}
